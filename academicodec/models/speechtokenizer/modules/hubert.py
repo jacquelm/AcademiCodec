@@ -71,11 +71,19 @@ class HubertFeatureReader:
 
 
 class SaveFeatures(nn.Module):
-    def __init__(self, audio_dir, hubert_path, kmeans_path, max_len=16000, sr=16000):
+    def __init__(
+        self,
+        audio_dir,
+        hubert_path,
+        kmeans_path,
+        extension=".wav",
+        max_len=16000,
+        sr=16000,
+    ):
         super().__init__()
         self.filenames = []
         self.audio_dir = audio_dir
-        self.filenames.extend(glob.glob(audio_dir + "/*.wav"))
+        self.filenames.extend(glob.glob(audio_dir + "/*" + extension))
         self.filename_len = len(self.filenames)
         print(len(self.filenames))
         self.sr = sr
@@ -113,11 +121,11 @@ class SaveFeatures(nn.Module):
 
 
 def extract(args):
-    print(args)
     save_features = SaveFeatures(
         audio_dir=args.audio_dir,
         hubert_path=args.hubert_path,
         kmeans_path=args.kmeans_path,
+        extension=args.extension,
     )
     save_features()
 
@@ -130,6 +138,9 @@ def get_args():
     )
     parser.add_argument(
         "--kmeans_path", default=None, type=str, help="kmeans_model_path"
+    )
+    parser.add_argument(
+        "--extension", type=str, default=".flac", help="extension audio file"
     )
     return parser
 
