@@ -1,0 +1,11 @@
+python3 academicodec/models/speechtokenizer/train.py \
+    --BATCH_SIZE < batch_size > \
+    --N_EPOCHS < num_epochs > \
+    --save_dir < log save dir > \
+    --PATH  < model save dir > \
+    --train_data_path < train data dir > \
+    --valid_data_path < valid data dir > \
+    --tokenizer_config < speech tokenizer model config path in speechtokenizer/configs/config.json > \
+    --sr < sampling rate > \
+    --audio_duration < audio_duraion_in_sec for training > \
+    --do_distillation < whether do distillation > \

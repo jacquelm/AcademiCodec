@@ -1,89 +1,94 @@
-# AcademiCodec: An Open Source Audio Codec Model for Academic Research
+# Trainer for SpeechTokenizer
 
-This repo is organized as follows:
-
-```text
-AcademiCodec
-├── academicodec
-│   ├── utils.py      # common parts of various models
-│   ├── modules       # common parts of various models
-│   ├── ...
-│   ├── quantization  # common parts of various models
-│   └── models        # parts that are not shared by various models
-│        ├── hificodec
-│        ├── encodec
-│        ├── soundstream
-│        └── ... 
-├── evaluation_metric
-├── egs
-│    ├── SoundStream*
-│    ├── EnCodec*
-│    └── HiFi-Codec*
-│          ├── start.sh
-│          ├── ...
-│          └── test.sh
-└── README.md
-```
-
-### On going
-This project is on going. You can find the paper on https://arxiv.org/pdf/2305.02765.pdf <br/>
-Furthermore, this project is lanched from University, we expect more researchers to be the contributor. <br/>
-
-#### Abstract <wip>
-Audio codec models are widely used in audio communication as a crucial technique for compressing audio into discrete representations. Nowadays, audio codec models are increasingly utilized in generation fields as intermediate representations. For instance, AudioLM is ann audio generation model that uses the discrete representation of SoundStream as a training target, while VALL-E employs the Encodec model as an intermediate feature to aid TTS tasks. Despite their usefulness, two challenges persist: (1) training these audio codec models can be difficult due to the lack of publicly available training processes and the need for large-scale data and GPUs; (2) achieving good reconstruction performance requires many codebooks, which increases the burden on generation models. In this study, we propose a group-residual vector quantization (GRVQ) technique and use it to develop a novel \textbf{Hi}gh \textbf{Fi}delity Audio Codec model, HiFi-Codec, which only requires 4 codebooks. We train all the models using publicly available TTS data such as LibriTTS, VCTK, AISHELL, and more, with a total duration of over 1000 hours, using 8 GPUs. Our experimental results show that HiFi-Codec outperforms Encodec in terms of reconstruction performance despite requiring only 4 codebooks. To facilitate research in audio codec and generation, we introduce AcademiCodec, the first open-source audio codec toolkit that offers training codes and pre-trained models for Encodec, SoundStream, and HiFi-Codec.
-
-## 🔥 News
-#### AcademiCodec
-- 2023.4.16: We first release the training code for Encodec and SoundStream and our pre-trained models, includes 24khz and 16khz.
-- 2023.5.5: We release the code of HiFi-Codec.
-- 2023.6.2: Add `HiFi-Codec-24k-320d/infer.ipynb`, which can be used to infer acoustic tokens to use for later training of VALL-E, SoundStorm and etc.
-- 2023.06.13: Refactor the code structure.
-### Dependencies
-* [PyTorch](http://pytorch.org/) version >= 1.13.0
-* Python version >= 3.8
+#### Abstract
+Current speech large language models build upon discrete speech representations, which can be categorized into semantic tokens and acoustic tokens. However, existing speech tokens are not specifically designed for speech language modeling. To assess the suitability of speech tokens for building speech language models, we established the first benchmark, SLMTokBench. Our results indicate that neither semantic nor acoustic tokens are ideal for this purpose. Therefore, we propose SpeechTokenizer, a unified speech tokenizer for speech large language models. SpeechTokenizer adopts the Encoder-Decoder architecture with residual vector quantization (RVQ). Unifying semantic and acoustic tokens, SpeechTokenizer disentangles different aspects of speech information hierarchically across different RVQ layers. Furthermore, We construct a Unified Speech Language Model (USLM) leveraging SpeechTokenizer. Experiments show that SpeechTokenizer performs comparably to EnCodec in speech reconstruction and demonstrates strong performance on the SLMTokBench benchmark. Also, USLM outperforms VALL-E in zero-shot Text-to-Speech tasks. Code and models are available at this https URL.
 
 # Train your own model
-  please refer to the specific version.
+```commandline
+bash <path_to_>/SpeechTokenizer_trainer/academicodec/models/speechtokenzier/train.sh
+```
 
 ## Data preparation
 Just prepare your audio data in one folder. Make sure the sample rate is right.
+HuBERT and kmeans for the distillation of the SpeechTokenizer need to be prepared.
+HuBERT and kmeans are described in details [here]
+(https://github.com/pytorch/fairseq/tree/master/examples/textless_nlp/gslm).
 
-## Training or Inferce
-Refer to the specical folders, e.g. Encodec_24k_240d represent, the Encodec model, sample rate is 24khz, downsample rate is 240. If you want to use our pre-trained models, please refer to https://huggingface.co/Dongchao/AcademiCodec/tree/main
+```commandline
+bash <path_to_>/SpeechTokenizer_trainer/academicodec/models/speechtokenizer/extract_feature.sh
+```
 
-## Version Description
-* Encodec_16k_320, we train it using 16khz audio, and we set the downsample as 320, which can be used to train SpearTTS
-* Encodec_24k_240d, we train it using 24khz audio, and we set the downsample as 240, which can be used to InstructTTS
-* Encodec_24k_32d, we train it using 24khz audio, we only set the downsample as 32, which can only use one codebook, such as AudioGen.
-* SoundStream_24k_240d, the same configuration as Encodec_24k_240d.
-## What the difference between SoundStream, Encodec and HiFi-Codec?
-In our view, the mian difference between SoundStream and Encodec is the different Discriminator choice. For Encodec, it only uses a STFT-dicriminator, which forces the STFT-spectrogram be more real. SoundStream use two types of Discriminator, one forces the waveform-level to be more real, one forces the specrogram-level to be more real. In our code, we adopt the waveform-level discriminator from HIFI-GAN. The spectrogram level discrimimator from Encodec. In thoery, we think SoundStream enjoin better performance. Actually, Google's offical SoundStream proves this, Google can only use 3 codebooks to reconstruct a audio with high-quality. Although our implements can also use 3 codebooks to realize good performance, we admit our version cannot be compared with Google now. <br/>
-For the HiFi-Codec, which is our proposed novel methods, which aims to help to some generation tasks. Such as VALL-E, AudioLM, MusicLM, SpearTTS, IntructTTS and so on. HiFi-Codec codebook only needs 4 codebooks, which significantly reduce the token numbers. Some researchers use our HiFi-Codec to implement VALL-E, which proves that can get better audio quality.
+## Usage
+### Model storage
+| Model| Dataset |Discription|
+|:----|:----:|:----|
+|[speechtokenizer_hubert_avg](https://huggingface.co/fnlp/SpeechTokenizer/tree/main/speechtokenizer_hubert_avg)|LibriSpeech|Adopt average representation across all HuBERT layers as semantic teacher |
+### load model
+```python
+from speechtokenizer import SpeechTokenizer
+
+config_path = '/path/config.json'
+ckpt_path = '/path/SpeechTokenizer.pt'
+model = SpeechTokenizer.load_from_checkpoint(config_path, ckpt_path)
+model.eval()
+```
+
+### Extracting discrete representations
+```python
+import torchaudio
+import torch
+
+# Load and pre-process speech waveform
+wav, sr = torchaudio.load('<SPEECH_FILE_PATH>')
+
+# monophonic checking
+if wav.shape(0) > 1:
+    wav = wav[:1,;]
+
+if sr != model.sample_rate:
+    wav = torchaudio.functional.resample(wav, sr, model.sample_rate)
+
+wav = wav.unsqueeze(0)
+
+# Extract discrete codes from SpeechTokenizer
+with torch.no_grad():
+    codes = model.encode(wav) # codes: (n_q, B, T)
+
+RVQ_1 = codes[:1, :, :] # Contain content info, can be considered as semantic tokens
+RVQ_supplement = codes[1:, :, :] # Contain timbre info, complete info lost by the first quantizer
+```
+
+### Decoding discrete representations
+```python
+# Concatenating semantic tokens (RVQ_1) and supplementary timbre tokens and then decoding
+wav = model.decode(torch.cat([RVQ_1, RVQ_supplement], axis=0))
+
+# Decoding from RVQ-i:j tokens from the ith quantizers to the jth quantizers
+wav = model.decode(codes[i: (j + 1)], st=i) 
+```
+
+## Points to note.
+The original SpeechTokenizer appears to have been trained at 16 kHz.
+This is because the HuBERT and Kmeans used as teachers are trained at 16 kHz in the publicly available version.
+If you want to train above 16 kHz, you need HuBERT and HuBERT kmeans trained above 16 kHz.
+Detailed training instructions on that can be found [here]
+(https://github.com/pytorch/fairseq/tree/master/examples/textless_nlp/gslm).
+
 
 ## Acknowledgements
 This implementation uses parts of the code from the following Github repos:
-https://github.com/facebookresearch/encodec <br>
-https://github.com/yangdongchao/Text-to-sound-Synthesis <br>
-https://github.com/b04901014/MQTTS
-## Citations ##
-If you find this code useful in your research, please cite our work:
-```bib
-@article{yang2023instructtts,
-  title={InstructTTS: Modelling Expressive TTS in Discrete Latent Space with Natural Language Style Prompt},
-  author={Yang, Dongchao and Liu, Songxiang and Huang, Rongjie and Lei, Guangzhi and Weng, Chao and Meng, Helen and Yu, Dong},
-  journal={arXiv preprint arXiv:2301.13662},
-  year={2023}
+https://github.com/ZhangXInFD/SpeechTokenizer <br>
+https://github.com/yangdongchao/AcademiCodec <br>
+
+## Citation
+If you use this code or result in your paper, please cite our work as:
+```Tex
+@misc{zhang2023speechtokenizer,
+      title={SpeechTokenizer: Unified Speech Tokenizer for Speech Language Models}, 
+      author={Xin Zhang and Dong Zhang and Shimin Li and Yaqian Zhou and Xipeng Qiu},
+      year={2023},
+      eprint={2308.16692},
+      archivePrefix={arXiv},
+      primaryClass={cs.CL}
 }
 ```
-```bibtex
-@article{yang2023hifi,
-  title={HiFi-Codec: Group-residual Vector quantization for High Fidelity Audio Codec},
-  author={Yang, Dongchao and Liu, Songxiang and Huang, Rongjie and Tian, Jinchuan and Weng, Chao and Zou, Yuexian},
-  journal={arXiv preprint arXiv:2305.02765},
-  year={2023}
-}
-```
-
-## Disclaimer ##
-MIT license
-
