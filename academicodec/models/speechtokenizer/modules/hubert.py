@@ -131,10 +131,11 @@ def get_args():
     parser.add_argument(
         "--kmeans_path", default=None, type=str, help="kmeans_model_path"
     )
+    return parser
 
 
 def main():
-    args = get_args()
+    args = get_args().parse_args()
     extract(args)
 
 
