@@ -1,3 +1,5 @@
 ckpt
 outputdir
 __pycache__
+checkpoints
+logs
