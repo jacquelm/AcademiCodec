@@ -3,8 +3,8 @@ from einops import rearrange
 import torch
 import numpy as np
 from academicodec.models.speechtokenizer.modules import SEANetEncoder, SEANetDecoder
-from academicodec.models.speechtokenizer.quantization.vq import ResidualVectorQuantizer   
- 
+from academicodec.models.speechtokenizer.quantization.vq import ResidualVectorQuantizer
+
 class SpeechTokenizer(nn.Module):
     def __init__(self, config):
         '''
@@ -21,6 +21,10 @@ class SpeechTokenizer(nn.Module):
                                      ratios=config.get('strides'),
                                      lstm=config.get('lstm_layers'),
                                      bidirectional=config.get('bidirectional'),
+                                     transformer_layers=config.get('transformer_layers'),
+                                     num_heads=config.get('num_heads'),
+                                     dim_feedforward=config.get('dim_feedforward'),
+                                     dropout=config.get('dropout'),
                                      dilation_base=config.get('dilation_base'),
                                      residual_kernel_size=config.get('residual_kernel_size'),
                                      n_residual_layers=config.get('n_residual_layers'),
@@ -37,7 +41,11 @@ class SpeechTokenizer(nn.Module):
                                      dimension=config.get('dimension'), 
                                      ratios=config.get('strides'),
                                      lstm=config.get('lstm_layers'),
-                                     bidirectional=False,
+                                     bidirectional=config.get('bidirectional'),
+                                     transformer_layers=config.get('transformer_layers'),
+                                     num_heads=config.get('num_heads'),
+                                     dim_feedforward=config.get('dim_feedforward'),
+                                     dropout=config.get('dropout'),
                                      dilation_base=config.get('dilation_base'),
                                      residual_kernel_size=config.get('residual_kernel_size'),
                                      n_residual_layers=config.get('n_residual_layers'),
@@ -54,7 +62,7 @@ class SpeechTokenizer(nn.Module):
         config_path : str
             Path of model configuration file.
         ckpt_path : str
-            Path of model  checkpoint.
+            Path of model checkpoint.
 
         Returns
         -------
@@ -69,7 +77,6 @@ class SpeechTokenizer(nn.Module):
         params = torch.load(ckpt_path, map_location='cpu')
         model.load_state_dict(params)
         return model
-    
     
     def forward(self, 
                 x: torch.tensor, 

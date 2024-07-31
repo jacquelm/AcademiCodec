@@ -5,7 +5,7 @@ import random
 import sys
 import time
 import warnings
-
+import math
 import matplotlib
 import numpy as np
 import torch
@@ -218,3 +218,10 @@ def scan_checkpoint(cp_dir, prefix):
     if len(cp_list) == 0:
         return None
     return sorted(cp_list)[-1]
+
+def find_nearest(array,value):
+    idx = np.searchsorted(array, value, side="left")
+    if idx > 0 and (idx == len(array) or math.fabs(value - array[idx-1]) < math.fabs(value - array[idx])):
+        return idx-1, array[idx-1]
+    else:
+        return idx, array[idx]

@@ -8,6 +8,7 @@ from torch.nn import ConvTranspose1d
 from torch.nn.utils import remove_weight_norm
 from torch.nn.utils import spectral_norm
 from torch.nn.utils import weight_norm
+import numpy as np
 
 from academicodec.utils import get_padding
 from academicodec.utils import init_weights
@@ -509,20 +510,19 @@ class Quantizer(torch.nn.Module):
 
     def embed(self, x):
         #idx: N, T, 4
-        #print('x ', x.shape)
+        # print('x ', x.shape)
         quantized_out = torch.tensor(0.0, device=x.device)
-        x = torch.split(x, 1, 2)  # split, 将最后一个维度分开, 每个属于一个index group
-        #print('x.shape ', len(x),x[0].shape)
-        for i in range(self.residul_layer):
+        x = torch.split(x, 1, 2)  # split, séparer la dernière dimension, chacune appartenant à un index group
+        # print('x.shape ',len(x),x[0].shape)
+        for i in range(np.minimum(self.residul_layer, len(x))):
             ret = []
             if i == 0:
-                for j in range(self.n_code_groups):
+                for j in range(np.minimum(self.n_code_groups, len(x))):
                     q = x[j]
                     embed = self.quantizer_modules[j]
                     q = embed.embedding(q.squeeze(-1))
                     ret.append(q)
                 ret = torch.cat(ret, -1)
-                #print(ret.shape)
                 quantized_out = quantized_out + ret
             else:
                 for j in range(self.n_code_groups):

@@ -86,7 +86,7 @@ def fatal(*args):
     sys.exit(1)
 
 
-# 这只是打印了但是没有真的 clip
+# This just prints but doesn't really clip
 def check_clipping(wav, rescale):
     if rescale:
         return
@@ -100,11 +100,11 @@ def check_clipping(wav, rescale):
 
 
 def test_one(args, wav_root, store_root, rescale, soundstream):
-    # torchaudio.load 的采样率为原始音频的采样率，不会自动下采样
+    # torchaudio.load, the sampling rate is that of the original audio and is not automatically downsampled.
     # wav, sr = torchaudio.load(wav_root)
-    # # 取单声道, output shape [1, T]
+    # # mono, output shape [1, T]
     # wav = wav[0].unsqueeze(0)
-    # # 重采样为模型的采样率
+    # Resampling at the sampling rate of the model
     # wav = torchaudio.transforms.Resample(orig_freq=sr, new_freq=args.sr)(wav)
 
     # load wav with librosa
@@ -170,9 +170,9 @@ def test_batch():
         target_bandwidths=args.target_bandwidths)
     parameter_dict = torch.load(args.resume_path)
     new_state_dict = OrderedDict()
-    # k 为 module.xxx.weight, v 为权重
+    # k is module.xxx.weight, v is weight
     for k, v in parameter_dict.items():
-        # 截取`module.`后面的xxx.weight
+        # intercept xxx.weight after `module.`.
         name = k[7:]
         new_state_dict[name] = v
     soundstream.load_state_dict(new_state_dict)  # load model

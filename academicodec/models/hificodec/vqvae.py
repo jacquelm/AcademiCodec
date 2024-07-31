@@ -42,4 +42,4 @@ class VQVAE(nn.Module):
         q, loss_q, c = self.quantizer(c)
         c = [code.reshape(batch_size, -1) for code in c]
         # shape: [N, T, 4]
-        return torch.stack(c, -1)
+        return torch.stack(c, -1), q, loss_q

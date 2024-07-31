@@ -1,5 +1,7 @@
-ckpt
-outputdir
+ckpt/
+generation/
 __pycache__
-checkpoints
-logs
+checkpoints/
+logs/
+data/
+notebooks/

@@ -20,6 +20,7 @@ from academicodec.utils import Logger
 from academicodec.utils import seed_everything
 from academicodec.models.speechtokenizer.distillation_loss import loss_distillation
 from torch.nn.parallel import DistributedDataParallel as DDP
+
 from tqdm import tqdm
 
 def getModelSize(model):
@@ -309,7 +310,10 @@ def train(args, speechtokenizer, stft_disc, msd, mpd, train_loader, valid_loader
                     loss_d.backward()
                     optimizer_d.step()
                     print('loss_d', loss_d)
-            message = '<epoch:{:d}, iter:{:d}, total_loss_g:{:.4f}, adv_g_loss:{:.4f}, feat_loss:{:.4f}, rec_loss:{:.4f}, commit_loss:{:.4f}, loss_d:{:.4f}, d_weight: {:.4f}, distillation_cont_loss:{:.4f}, distillation_pseudo_loss:{:.4f}>'.format(
+            message = '<epoch:{:d}, iter:{:d}, total_loss_g:{:.4f}, adv_g_loss:{:.4f},\
+                  feat_loss:{:.4f}, rec_loss:{:.4f}, commit_loss:{:.4f}, loss_d:{:.4f},\
+                      d_weight: {:.4f}, distillation_cont_loss:{:.4f},\
+                          distillation_pseudo_loss:{:.4f}>'.format(
                 epoch, k_iter,
                 total_loss_g.item(),
                 adv_g_loss.item(),
@@ -321,7 +325,10 @@ def train(args, speechtokenizer, stft_disc, msd, mpd, train_loader, valid_loader
                 logger.log_info(message)
         lr_scheduler_g.step()
         lr_scheduler_d.step()
-        message = '<epoch:{:d}, <total_loss_g_train:{:.4f}, recon_loss_train:{:.4f}, adversarial_loss_train:{:.4f}, feature_loss_train:{:.4f}, commit_loss_train:{:.4f}, distillation_cont_loss:{:.4f}, distillation_pseudo_loss:{:.4f}>'.format(
+        message = '<epoch:{:d}, <total_loss_g_train:{:.4f}, recon_loss_train:{:.4f},\
+              adversarial_loss_train:{:.4f}, feature_loss_train:{:.4f},\
+                  commit_loss_train:{:.4f}, distillation_cont_loss:{:.4f},\
+                      distillation_pseudo_loss:{:.4f}>'.format(
             epoch, train_loss_g / len(train_loader), train_rec_loss /
             len(train_loader), train_adv_g_loss / len(train_loader),
             train_feat_loss / len(train_loader),
@@ -437,7 +444,11 @@ def train(args, speechtokenizer, stft_disc, msd, mpd, train_loader, valid_loader
                     latest_save['lr_scheduler_d'] = lr_scheduler_d.state_dict()
                     torch.save(latest_save, args.PATH + '/latest.pth')
 
-            message = '<epoch:{:d}, total_loss_g_valid:{:.4f}, recon_loss_valid:{:.4f}, adversarial_loss_valid:{:.4f}, feature_loss_valid:{:.4f}, commit_loss_valid:{:.4f}, distillation_cont_loss_valid:{:.4f}, distillation_pseudo_loss_valid:{:.4f}, valid_loss_d:{:.4f}, best_epoch:{:d}>'.format(
+            message = '<epoch:{:d}, total_loss_g_valid:{:.4f}, recon_loss_valid:{:.4f},\
+                  adversarial_loss_valid:{:.4f}, feature_loss_valid:{:.4f},\
+                      commit_loss_valid:{:.4f}, distillation_cont_loss_valid:{:.4f},\
+                          distillation_pseudo_loss_valid:{:.4f}, valid_loss_d:{:.4f},\
+                              best_epoch:{:d}>'.format(
                 epoch, valid_loss_g / len(valid_loader), valid_rec_loss /
                 len(valid_loader), valid_adv_g_loss / len(valid_loader),
                 valid_feat_loss / len(valid_loader),
