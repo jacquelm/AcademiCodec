@@ -13,21 +13,11 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", "-c", type=str, help="Config file path")
-    parser.add_argument("--audio_dir", type=str, help="Audio folder path")
-    parser.add_argument("--rep_dir", type=str, help="Path to save representation files")
-    parser.add_argument(
-        "--exts",
-        type=str,
-        help="Audio file extensions, splitting with ','",
-        default="flac",
-    )
-    parser.add_argument("--split_seed", type=int, help="Random seed", default=0)
-    parser.add_argument("--valid_set_size", type=float, default=1000)
     args = parser.parse_args()
-    exts = args.exts.split(",")
     device = "cuda" if torch.cuda.is_available() else "cpu"
     with open(args.config) as f:
         cfg = json.load(f)
+    exts = cfg.get("exts").split(",")
     sample_rate = cfg.get("sample_rate")
     feature_extractor = Wav2Vec2FeatureExtractor.from_pretrained(
         cfg.get("semantic_model_path")
@@ -39,16 +29,16 @@ if __name__ == "__main__":
         f"Succesfully load model from path {cfg.get("semantic_model_path")} ."
     )
     target_layer = cfg.get("semantic_model_layer")
-    path = Path(args.audio_dir)
+    path = Path(cfg.get("audio_dir"))
     file_list = [str(file) for ext in exts for file in path.glob(f"**/*.{ext}")]
-    if args.valid_set_size != 0 and args.valid_set_size < 1:
-        valid_set_size = int(len(file_list) * args.valid_set_size)
+    if cfg.get("valid_set_size") != 0 and cfg.get("valid_set_size") < 1:
+        valid_set_size = int(len(file_list) * cfg.get("valid_set_size"))
     else:
-        valid_set_size = int(args.valid_set_size)
+        valid_set_size = int(cfg.get("valid_set_size"))
     train_file_list = cfg.get("train_files")
     valid_file_list = cfg.get("valid_files")
     segment_size = cfg.get("segment_size")
-    random.seed(args.split_seed)
+    random.seed(cfg.get("split_seed"))
     random.shuffle(file_list)
     print(
         f"A total of {len(file_list)} samples will be processed, and {valid_set_size} of them will be included in the validation set."
@@ -71,7 +61,7 @@ if __name__ == "__main__":
             else:
                 rep = ouput.hidden_states[target_layer].squeeze()
             rep_file = (
-                audio_file.replace(args.audio_dir, args.rep_dir).split(".")[0]
+                audio_file.replace(cfg.get("audio_dir"), cfg.get("rep_dir")).split(".")[0]
                 + ".hubert.npy"
             )
             rep_sub_dir = "/".join(rep_file.split("/")[:-1])

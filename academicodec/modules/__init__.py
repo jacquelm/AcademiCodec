@@ -14,6 +14,8 @@ from .conv import SConv1d
 from .conv import SConvTranspose1d
 from .conv import unpad1d
 from .lstm import SLSTM
+from .norm import ConvLayerNorm
 from .seanet import SEANetDecoder
 from .seanet import SEANetEncoder
 from .transformer import StreamingTransformerEncoder
+from .transformer import STransformer

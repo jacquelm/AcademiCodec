@@ -13,7 +13,7 @@ from academicodec.models.speechtokenizer.model import (
     SpeechTokenizer,
 )
 from academicodec.models.speechtokenizer.trainer import SpeechTokenizerTrainer
-from academicodec.models.speechtokenizer.discriminators import (
+from academicodec.modules.discriminators import (
     MultiPeriodDiscriminator,
     MultiScaleDiscriminator,
     MultiScaleSTFTDiscriminator,

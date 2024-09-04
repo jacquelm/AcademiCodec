@@ -6,3 +6,4 @@
 # flake8: noqa
 from .vq import QuantizedResult
 from .vq import ResidualVectorQuantizer
+from .core_vq import ResidualVectorQuantization

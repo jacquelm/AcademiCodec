@@ -6,5 +6,6 @@ logs/
 data/
 notebooks/
 Log/
+configs/
 dev_file_list.txt
 train_file_list.txt

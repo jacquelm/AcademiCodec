@@ -6,7 +6,7 @@ from torch.nn.utils import weight_norm, spectral_norm
 import typing as tp
 import torchaudio
 from einops import rearrange
-from .modules import NormConv2d
+from . import NormConv2d
 
 LRELU_SLOPE = 0.1
 

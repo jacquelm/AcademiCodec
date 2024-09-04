@@ -12,7 +12,7 @@ from dataclasses import field
 import torch
 from torch import nn
 
-from academicodec.quantization.core_vq import ResidualVectorQuantization
+from . import ResidualVectorQuantization
 
 
 @dataclass
@@ -39,14 +39,15 @@ class ResidualVectorQuantizer(nn.Module):
     """
 
     def __init__(
-            self,
-            dimension: int=256,
-            n_q: int=8,
-            bins: int=1024,
-            decay: float=0.99,
-            kmeans_init: bool=True,
-            kmeans_iters: int=50,
-            threshold_ema_dead_code: int=2, ):
+        self,
+        dimension: int = 256,
+        n_q: int = 8,
+        bins: int = 1024,
+        decay: float = 0.99,
+        kmeans_init: bool = True,
+        kmeans_iters: int = 50,
+        threshold_ema_dead_code: int = 2,
+    ):
         super().__init__()
         self.n_q = n_q
         self.dimension = dimension
@@ -62,60 +63,94 @@ class ResidualVectorQuantizer(nn.Module):
             decay=self.decay,
             kmeans_init=self.kmeans_init,
             kmeans_iters=self.kmeans_iters,
-            threshold_ema_dead_code=self.threshold_ema_dead_code, )
+            threshold_ema_dead_code=self.threshold_ema_dead_code,
+        )
 
-    def forward(self,
-                x: torch.Tensor,
-                sample_rate: int,
-                bandwidth: tp.Optional[float]=None) -> QuantizedResult:
+    def forward(
+        self,
+        x: torch.Tensor,
+        sample_rate: int = None,
+        bandwidth: tp.Optional[float] = None,
+        n_q: tp.Optional[int] = None,
+        layers: tp.Optional[list] = None,
+    ) -> QuantizedResult:
         """Residual vector quantization on the given input tensor.
         Args:
             x (torch.Tensor): Input tensor.
             sample_rate (int): Sample rate of the input tensor.
             bandwidth (float): Target bandwidth.
+            n_q (int): Number of quantizer used to quantize. Default: All quantizers.
+            layers (list): Layer that need to return quantized. Defalt: None.
         Returns:
             QuantizedResult:
                 The quantized (or approximately quantized) representation with
+                the associated numbert quantizers and layer quantized and
                 the associated bandwidth and any penalty term for the loss.
         """
-        bw_per_q = self.get_bandwidth_per_quantizer(sample_rate)
-        n_q = self.get_num_quantizers_for_bandwidth(sample_rate, bandwidth)
-        quantized, codes, commit_loss = self.vq(x, n_q=n_q)
-        bw = torch.tensor(n_q * bw_per_q).to(x)
-        return quantized, codes, bw, torch.mean(commit_loss)
-        #return QuantizedResult(quantized, codes, bw, penalty=torch.mean(commit_loss))
+        bw = None
+        if sample_rate:
+            bw_per_q = self.get_bandwidth_per_quantizer(sample_rate)
+            bw = torch.tensor(n_q * bw_per_q).to(x)
+            n_q = self.get_num_quantizers_for_bandwidth(sample_rate, bandwidth)
+        elif n_q:
+            n_q = n_q
+        else:
+            n_q = self.n_q
+        if layers and max(layers) >= n_q:
+            raise ValueError(
+                f"Last layer index in layers: A {max(layers)}.\
+                    Number of quantizers in RVQ: B {self.n_q}. A must less than B."
+            )
+        quantized, codes, commit_loss, quantized_list = self.vq(
+            x, n_q=n_q, layers=layers
+        )
+        return quantized, codes, torch.mean(commit_loss), quantized_list, bw
 
     def get_num_quantizers_for_bandwidth(
-            self, sample_rate: int, bandwidth: tp.Optional[float]=None) -> int:
-        """Return n_q based on specified target bandwidth.
-        """
+        self, sample_rate: int, bandwidth: tp.Optional[float] = None
+    ) -> int:
+        """Return n_q based on specified target bandwidth."""
         bw_per_q = self.get_bandwidth_per_quantizer(sample_rate)
         n_q = self.n_q
-        if bandwidth and bandwidth > 0.:
+        if bandwidth and bandwidth > 0.0:
             n_q = int(max(1, math.floor(bandwidth / bw_per_q)))
         return n_q
 
     def get_bandwidth_per_quantizer(self, sample_rate: int):
-        """Return bandwidth per quantizer for a given input sample rate.
-        """
+        """Return bandwidth per quantizer for a given input sample rate."""
         return math.log2(self.bins) * sample_rate / 1000
 
-    def encode(self,
-               x: torch.Tensor,
-               sample_rate: int,
-               bandwidth: tp.Optional[float]=None,
-               st: tp.Optional[int]=None) -> torch.Tensor:
+    def encode(
+        self,
+        x: torch.Tensor,
+        sample_rate: int = None,
+        bandwidth: tp.Optional[float] = None,
+        n_q: tp.Optional[int] = None,
+        st: tp.Optional[int] = None,
+    ) -> torch.Tensor:
         """Encode a given input tensor with the specified sample rate at the given bandwidth.
         The RVQ encode method sets the appropriate number of quantizer to use
         and returns indices for each quantizer.
+        Args:
+            x (torch.Tensor): Input tensor.
+            n_q (int): Number of quantizer used to quantize. Default: All quantizers.
+            st (int): Start to encode input from which layers. Default: 0.
         """
-        n_q = self.get_num_quantizers_for_bandwidth(sample_rate, bandwidth)
+        if sample_rate:
+            n_q = self.get_num_quantizers_for_bandwidth(sample_rate, bandwidth)
+        elif n_q:
+            n_q = n_q
+        else:
+            n_q = self.n_q
         st = st or 0
         codes = self.vq.encode(x, n_q=n_q, st=st)
         return codes
 
-    def decode(self, codes: torch.Tensor) -> torch.Tensor:
+    def decode(self, codes: torch.Tensor, st: int = 0) -> torch.Tensor:
         """Decode the given codes to the quantized representation.
+        Args:
+            codes (torch.Tensor): Input indices for each quantizer.
+            st (int): Start to decode input codes from which layers. Default: 0.
         """
-        quantized = self.vq.decode(codes)
+        quantized = self.vq.decode(codes, st=st)
         return quantized

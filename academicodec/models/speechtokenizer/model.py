@@ -2,8 +2,8 @@ import torch.nn as nn
 from einops import rearrange
 import torch
 import numpy as np
-from academicodec.models.speechtokenizer.modules import SEANetEncoder, SEANetDecoder
-from academicodec.models.speechtokenizer.quantization.vq import ResidualVectorQuantizer
+from academicodec.modules import SEANetEncoder, SEANetDecoder
+from academicodec.quantization.vq import ResidualVectorQuantizer
 
 
 class SpeechTokenizer(nn.Module):
@@ -112,7 +112,7 @@ class SpeechTokenizer(nn.Module):
         """
         n_q = n_q if n_q else self.n_q
         e = self.encoder(x)
-        quantized, codes, commit_loss, quantized_list = self.quantizer(
+        quantized, codes, commit_loss, quantized_list, _ = self.quantizer(
             e, n_q=n_q, layers=layers
         )
         feature = rearrange(quantized_list[0], "b d t -> b t d")
@@ -138,7 +138,9 @@ class SpeechTokenizer(nn.Module):
         """
         e = self.encoder(x)
         layers = layers if layers else list(range(self.n_q))
-        quantized, codes, commit_loss, quantized_list = self.quantizer(e, layers=layers)
+        quantized, codes, commit_loss, quantized_list, _ = self.quantizer(
+            e, layers=layers
+        )
         return quantized_list
 
     def encode(self, x: torch.tensor, n_q: int = None, st: int = None):
