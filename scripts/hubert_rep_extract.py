@@ -35,6 +35,9 @@ if __name__ == "__main__":
     model = (
         HubertModel.from_pretrained(cfg.get("semantic_model_path")).eval().to(device)
     )
+    print(
+        f"Succesfully load model from path {cfg.get("semantic_model_path")} ."
+    )
     target_layer = cfg.get("semantic_model_layer")
     path = Path(args.audio_dir)
     file_list = [str(file) for ext in exts for file in path.glob(f"**/*.{ext}")]
@@ -64,9 +67,9 @@ if __name__ == "__main__":
             ).input_values
             ouput = model(input_values.to(model.device), output_hidden_states=True)
             if target_layer == "avg":
-                rep = torch.mean(torch.stack(ouput.hidden_states), axis=0)
+                rep = torch.mean(torch.stack(ouput.hidden_states), axis=0).squeeze()
             else:
-                rep = ouput.hidden_states[target_layer]
+                rep = ouput.hidden_states[target_layer].squeeze()
             rep_file = (
                 audio_file.replace(args.audio_dir, args.rep_dir).split(".")[0]
                 + ".hubert.npy"

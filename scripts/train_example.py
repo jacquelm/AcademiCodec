@@ -1,3 +1,14 @@
+import os, sys
+import json
+import argparse
+
+if os.path.exists("/home/maxime/Documents/Code/Neural_Network/Pytorch/AcademiCodec"):
+    sys.path.insert(
+        0, "/home/maxime/Documents/Code/Neural_Network/Pytorch/AcademiCodec"
+    )
+else:
+    sys.path.insert(0, "/home/mjacquelin/Project/Neural_Network/Pytorch/AcademiCodec")
+
 from academicodec.models.speechtokenizer.model import (
     SpeechTokenizer,
 )
@@ -7,9 +18,6 @@ from academicodec.models.speechtokenizer.discriminators import (
     MultiScaleDiscriminator,
     MultiScaleSTFTDiscriminator,
 )
-import json
-import argparse
-
 
 if __name__ == "__main__":
 

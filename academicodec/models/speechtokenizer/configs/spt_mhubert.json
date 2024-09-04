@@ -26,15 +26,15 @@
 
     "distill_loss_lambda": 120,
     "distill_type": "d_axis",
-
-    "semantic_model_path": "/home/mjacquelin/Project/Neural_Network/Pytorch/mHuBERT-147/checkpoint/pretrained/checkpoint_best.pt",
+    
+    "semantic_model_path": "utter-project/mHuBERT-147",
     "semantic_model_layer": "avg",
 
     "train_files":"train_file_list.txt",
     "valid_files":"dev_file_list.txt",
-    "results_folder": "Log/spt_base",
+    "results_folder": "Log/mHuBERT",
     "sample_rate": 16000,
-    "batch_size": 6,
+    "batch_size": 14,
     "epochs":10,
     "learning_rate": 1e-4,
     "intial_learning_rate":1e-4,
@@ -47,7 +47,7 @@
     "wd": 0,
     "num_workers": 8,
     "log_steps": 100,
-    "stdout_steps": 10,
+    "stdout_steps": 50,
     "save_model_steps": 2500,
     "num_ckpt_keep": 6,
     "showpiece_num": 8

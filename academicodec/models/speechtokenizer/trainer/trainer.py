@@ -14,7 +14,7 @@ from .optimizer import get_optimizer
 from torch.utils import tensorboard
 from .loss import *
 import json
-from speechtokenizer import SpeechTokenizer
+from academicodec.models.speechtokenizer.model import SpeechTokenizer
 import time
 from tqdm import tqdm
 from accelerate import (

@@ -5,3 +5,6 @@ checkpoints/
 logs/
 data/
 notebooks/
+Log/
+dev_file_list.txt
+train_file_list.txt

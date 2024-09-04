@@ -7,22 +7,7 @@ This is the code for the SpeechTokenizer presented in the [SpeechTokenizer: Unif
 * A model operated at 16khz on monophonic speech trained on Librispeech with average representation across all HuBERT layers as semantic teacher.
 * A model with  [Snake activation](https://arxiv.org/abs/2306.06546) operated at 16khz on monophonic speech trained on Librispeech and Common Voice with average representation across all HuBERT layers as semantic teacher.
 
-<br>
-<p align="center">
-    <img src="images/overview.png" width="95%"> <br>
-    Overview
-</p>
-<p align="center">
-    <img src="images/speechtokenizer_framework.jpg" width="95%"> <br>
-    The SpeechTokenizer framework.
-</p>
-<br>
-
-
-Welcome to try our [SLMTokBench](https://github.com/0nutation/SLMTokBench) 
- and we will also open source our [USLM](https://github.com/0nutation/USLM)!
-
-## Qick Link
+## Quick Link
 * [Relase](#release)
 * [Samples](#samples)
 * [Installation](#installation)
