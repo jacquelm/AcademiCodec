@@ -5,6 +5,10 @@
 # LICENSE file in the root directory of this source tree.
 """Torch modules."""
 # flake8: noqa
+from .lstm import SLSTM
+from .norm import ConvLayerNorm
+from .transformer import StreamingTransformerEncoder
+from .transformer import STransformer
 from .conv import NormConv1d
 from .conv import NormConv2d
 from .conv import NormConvTranspose1d
@@ -13,9 +17,6 @@ from .conv import pad1d
 from .conv import SConv1d
 from .conv import SConvTranspose1d
 from .conv import unpad1d
-from .lstm import SLSTM
-from .norm import ConvLayerNorm
 from .seanet import SEANetDecoder
 from .seanet import SEANetEncoder
-from .transformer import StreamingTransformerEncoder
-from .transformer import STransformer
+from .embedding import extract_features

@@ -2,7 +2,7 @@ from pathlib import Path
 import re
 import os
 import itertools
-
+import numpy as np
 from beartype import beartype
 
 import torch
@@ -15,6 +15,8 @@ from torch.utils import tensorboard
 from .loss import *
 import json
 from academicodec.models.speechtokenizer.model import SpeechTokenizer
+from academicodec.models.embedding import CNN_LSTM, SPLPredictorCNN
+from academicodec.modules.embedding import extract_features
 import time
 from tqdm import tqdm
 from accelerate import (
@@ -64,6 +66,39 @@ def checkpoint_num_steps(checkpoint_path):
 
 
 class SpeechTokenizerTrainer(nn.Module):
+    """
+    Trainer class for the SpeechTokenizer model, handling training, validation, saving, and loading of the model.
+
+    Attributes
+    ----------
+    generator : SpeechTokenizer
+        The generator model used for training.
+    discriminators : dict
+        Dictionary of discriminator models used for training.
+    cfg : dict
+        Configuration dictionary containing various hyperparameters and settings.
+    accelerator : Accelerator
+        Accelerator instance for distributed training and mixed precision.
+    writer : tensorboard.SummaryWriter
+        TensorBoard writer for logging training metrics.
+    ds : audioDataset
+        Training dataset.
+    valid_ds : audioDataset
+        Validation dataset.
+    dl : DataLoader
+        DataLoader for the training dataset.
+    valid_dl : DataLoader
+        DataLoader for the validation dataset.
+    optim_g : torch.optim.Optimizer
+        Optimizer for the generator.
+    optim_d : torch.optim.Optimizer
+        Optimizer for the discriminators.
+    scheduler_g : torch.optim.lr_scheduler.LambdaLR
+        Learning rate scheduler for the generator.
+    scheduler_d : torch.optim.lr_scheduler.LambdaLR
+        Learning rate scheduler for the discriminators.
+    """
+
     @beartype
     def __init__(
         self,
@@ -71,10 +106,28 @@ class SpeechTokenizerTrainer(nn.Module):
         discriminators: dict,
         cfg,
         accelerate_kwargs: dict = dict(),
+        embedder: CNN_LSTM = None,
     ):
+        """
+        Initialize the SpeechTokenizerTrainer.
+
+        Parameters
+        ----------
+        generator : SpeechTokenizer
+            The generator model to train.
+        discriminators : dict
+            Dictionary of discriminator models.
+        cfg : dict
+            Configuration dictionary containing hyperparameters and settings.
+        accelerate_kwargs : dict, optional
+            Additional arguments for the Accelerator (default is an empty dictionary).
+        """
         super().__init__()
-        ddp_kwargs = DistributedDataParallelKwargs()
+
+        # Set up random seed for reproducibility
         torch.manual_seed(cfg.get("seed"))
+
+        # Configuration parameters
         split_batches = cfg.get("split_batches", False)
         self.log_steps = cfg.get("log_steps")
         self.stdout_steps = cfg.get("stdout_steps")
@@ -89,31 +142,39 @@ class SpeechTokenizerTrainer(nn.Module):
         self.showpiece_num = cfg.get("showpiece_num", 8)
         project_name = "SpeechTokenizer"
 
+        # Create results directory if it doesn't exist
         if not self.results_folder.exists():
             self.results_folder.mkdir(parents=True, exist_ok=True)
 
+        # Save configuration to file
         with open(f"{str(self.results_folder)}/config.json", "w+") as f:
             json.dump(cfg, f, ensure_ascii=False, indent=4)
 
-        # tracker = AudioTensorBoardTracker(run_name=project_name, logging_dir=results_folder)
+        # Setup Accelerator for distributed training
         dataloader_config = DataLoaderConfiguration(split_batches=split_batches)
         self.accelerator = Accelerator(
             dataloader_config=dataloader_config,
-            kwargs_handlers=[ddp_kwargs],
-            # log_with=tracker,
+            kwargs_handlers=[DistributedDataParallelKwargs()],
             **accelerate_kwargs,
         )
 
+        # TensorBoard writer setup (only for the main process)
         if self.is_main:
             self.writer = tensorboard.SummaryWriter(
                 os.path.join(results_folder, "logs")
             )
 
+        # Initialize models and other components
         self.generator = generator
         self.discriminators = discriminators
-
         self.register_buffer("steps", torch.Tensor([0]))
+        self.embedder = None
+        # Get embedder
+        if embedder:
+            self.embedder = embedder
+            self.embedder.requires_grad_(False)
 
+        # Loss function configurations
         self.mel_loss_lambdas = cfg.get("mel_loss_lambdas")
         self.commitment_loss_lambda = cfg.get("commitment_loss_lambda")
         self.recon_loss_lambda = cfg.get("recon_loss_lambda")
@@ -126,6 +187,8 @@ class SpeechTokenizerTrainer(nn.Module):
             self.distill_loss = partial(t_axis_distill_loss, lambda_sim=lambda_sim)
         else:
             self.distill_loss = d_axis_distill_loss
+
+        # Mel loss configuration
         self.mel_loss_kwargs_list = []
         mult = 1
         for i in range(len(self.mel_loss_lambdas)):
@@ -140,7 +203,7 @@ class SpeechTokenizerTrainer(nn.Module):
                     "fmax": cfg.get("fmax_for_loss"),
                 }
             )
-            mult = mult * 2
+            mult *= 2
         self.mel_kwargs = {
             "n_fft": cfg.get("n_fft"),
             "num_mels": cfg.get("num_mels"),
@@ -151,9 +214,7 @@ class SpeechTokenizerTrainer(nn.Module):
             "fmax": cfg.get("fmax"),
         }
 
-        # max grad norm
-
-        # self.max_grad_norm = max_grad_norm
+        # Load dataset files
         segment_size = cfg.get("segment_size")
         train_files = cfg.get("train_files")
         batch_size = cfg.get("batch_size")
@@ -164,6 +225,7 @@ class SpeechTokenizerTrainer(nn.Module):
         with open(valid_files, "r") as f:
             valid_file_list = f.readlines()
 
+        # Create datasets
         self.ds = audioDataset(
             file_list=train_file_list,
             segment_size=segment_size,
@@ -179,17 +241,20 @@ class SpeechTokenizerTrainer(nn.Module):
         )
         if self.is_main:
             self.print(
-                f"training with dataset of {len(self.ds)} samples and validating with randomly splitted {len(self.valid_ds)} samples"
+                f"training with dataset of {len(self.ds)} samples and validating with \
+                    randomly splitted {len(self.valid_ds)} samples"
             )
 
+        # Ensure datasets are large enough
         assert (
             len(self.ds) >= self.batch_size
-        ), "dataset must have sufficient samples for training"
+        ), "Dataset must have sufficient samples for training"
         assert (
             len(self.valid_ds) >= self.batch_size
-        ), f"validation dataset must have sufficient number of samples (currently {len(self.valid_ds)}) for training"
+        ), f"Validation dataset must have sufficient number of samples (currently \
+            {len(self.valid_ds)}) for training"
 
-        # dataloader
+        # DataLoader setup
         drop_last = cfg.get("drop_last", True)
         num_workers = cfg.get("num_workers")
         self.dl = get_dataloader(
@@ -203,11 +268,10 @@ class SpeechTokenizerTrainer(nn.Module):
             self.valid_ds, batch_size=1, shuffle=False, drop_last=False, num_workers=1
         )
 
-        # lr
+        # Learning rate and optimizer setup
         self.lr = cfg.get("learning_rate")
-        self.initial_lr = cfg.get("intial_learning_rate")
+        self.initial_lr = cfg.get("initial_learning_rate")
 
-        # optimizer
         self.optim_g = get_optimizer(
             generator.parameters(),
             lr=cfg.get("learning_rate"),
@@ -222,14 +286,12 @@ class SpeechTokenizerTrainer(nn.Module):
             betas=cfg.get("betas"),
         )
 
-        # scheduler
-        # num_train_steps = epochs * self.ds.__len__() // (batch_size * grad_accum_every)
-        num_train_steps = self.epochs * self.ds.__len__() // batch_size
+        # Scheduler setup
+        num_train_steps = self.epochs * self.ds.__len__() // self.batch_size
         self.scheduler_g = CosineAnnealingLR(self.optim_g, T_max=num_train_steps)
         self.scheduler_d = CosineAnnealingLR(self.optim_d, T_max=num_train_steps)
 
-        # prepare with accelerator
-
+        # Prepare models and optimizers with accelerator
         (
             self.generator,
             self.optim_g,
@@ -238,6 +300,7 @@ class SpeechTokenizerTrainer(nn.Module):
             self.scheduler_d,
             self.dl,
             self.valid_dl,
+            self.embedder,
         ) = self.accelerator.prepare(
             self.generator,
             self.optim_g,
@@ -246,11 +309,13 @@ class SpeechTokenizerTrainer(nn.Module):
             self.scheduler_d,
             self.dl,
             self.valid_dl,
+            self.embedder,
         )
         self.discriminators = {
             k: self.accelerator.prepare(v) for k, v in self.discriminators.items()
         }
 
+        # Initialize trackers
         hps = {
             "num_train_steps": num_train_steps,
             "num_warmup_steps": self.num_warmup_steps,
@@ -259,10 +324,22 @@ class SpeechTokenizerTrainer(nn.Module):
             "epochs": self.epochs,
         }
         self.accelerator.init_trackers("SpeechTokenizer", config=hps)
+
+        # Initialize best validation metric
         self.best_dev_mel_loss = float("inf")
         self.plot_gt_once = False
 
     def save(self, path, best_dev_mel_loss):
+        """
+        Save the current state of the model, optimizers, and schedulers.
+
+        Parameters
+        ----------
+        path : str
+            Path to save the checkpoint.
+        best_dev_mel_loss : float
+            Current best validation mel loss to compare and save if improved.
+        """
         if best_dev_mel_loss < self.best_dev_mel_loss:
             self.best_dev_mel_loss = best_dev_mel_loss
             torch.save(
@@ -287,6 +364,16 @@ class SpeechTokenizerTrainer(nn.Module):
         torch.save(pkg, path)
 
     def load(self, path=None, restore_optimizer=True):
+        """
+        Load the model, optimizers, and schedulers from a checkpoint.
+
+        Parameters
+        ----------
+        path : str, optional
+            Path to the checkpoint to load (default is None, which loads the latest checkpoint).
+        restore_optimizer : bool, optional
+            Whether to restore the optimizer and scheduler states (default is True).
+        """
         if not exists(path):
             ckpts = sorted(self.results_folder.glob(f"SpeechTokenizerTrainer_*"))
             path = str(ckpts[-1])
@@ -319,14 +406,38 @@ class SpeechTokenizerTrainer(nn.Module):
             )
 
     def print(self, msg):
+        """
+        Print a message to the console if in the main process.
+
+        Parameters
+        ----------
+        msg : str
+            The message to print.
+        """
         self.accelerator.print(msg)
 
     @property
     def device(self):
+        """
+        Device property.
+
+        Returns
+        -------
+        torch.device
+            The device used for training (CPU or GPU).
+        """
         return self.accelerator.device
 
     @property
     def is_distributed(self):
+        """
+        Check if training is distributed.
+
+        Returns
+        -------
+        bool
+            True if distributed training is enabled, False otherwise.
+        """
         return not (
             self.accelerator.distributed_type == DistributedType.NO
             and self.accelerator.num_processes == 1
@@ -334,13 +445,42 @@ class SpeechTokenizerTrainer(nn.Module):
 
     @property
     def is_main(self):
+        """
+        Check if the current process is the main process.
+
+        Returns
+        -------
+        bool
+            True if the process is the main process, False otherwise.
+        """
         return self.accelerator.is_main_process
 
     @property
     def is_local_main(self):
+        """
+        Check if the current process is the main process on the local machine.
+
+        Returns
+        -------
+        bool
+            True if the process is the main process on the local machine, False otherwise.
+        """
         return self.accelerator.is_local_main_process
 
     def warmup(self, step):
+        """
+        Calculate the learning rate for a given training step during warmup.
+
+        Parameters
+        ----------
+        step : int
+            The current training step.
+
+        Returns
+        -------
+        float
+            The learning rate for the current step.
+        """
         if step < self.num_warmup_steps:
             return (
                 self.initial_lr
@@ -350,6 +490,20 @@ class SpeechTokenizerTrainer(nn.Module):
             return self.lr
 
     def log(self, values: dict, step, type=None, **kwargs):
+        """
+        Log values to TensorBoard.
+
+        Parameters
+        ----------
+        values : dict
+            Dictionary of values to log.
+        step : int
+            The current training step.
+        type : str, optional
+            Type of data to log ('figure', 'audio', or None) (default is None).
+        **kwargs : additional keyword arguments
+            Additional arguments for TensorBoard logging.
+        """
         if type == "figure":
             for k, v in values.items():
                 self.writer.add_figure(k, v, global_step=step)
@@ -361,7 +515,12 @@ class SpeechTokenizerTrainer(nn.Module):
                 self.writer.add_scalar(k, v, global_step=step)
 
     def train(self):
+        """
+        Train the model.
 
+        This function performs training over epochs, updates model parameters,
+        and logs training metrics. It also performs validation and saves model checkpoints.
+        """
         self.generator.train()
         map(lambda disc: disc.train(), self.discriminators.values())
         step_time_log = {}
@@ -369,7 +528,7 @@ class SpeechTokenizerTrainer(nn.Module):
         steps = int(self.steps.item())
         if steps < self.num_warmup_steps:
             lr = self.warmup(steps)
-            for param_group in self.optim.param_groups:
+            for param_group in self.optim_g.param_groups:
                 param_group["lr"] = lr
         else:
             self.scheduler_d.step()
@@ -381,14 +540,24 @@ class SpeechTokenizerTrainer(nn.Module):
                 print(f"Epoch:{epoch} start...")
 
             for batch in self.dl:
-
                 tic = time.time()
 
+                # Training step
                 x, semantic_feature = batch
-                x = x.unsqueeze(1)
-                x_hat, loss_q, feature = self.generator(x)
+                vocal_embedding = None
+                if self.embedder:
+                    vocal_feature = torch.from_numpy(
+                        np.array([(extract_features(audio.cpu())) for audio in x])
+                    ).cuda()
+                    vocal_embedding = self.embedder.forward_feature(
+                        vocal_feature.unsqueeze(1)
+                    )
 
-                # Discriminators
+                x = x.unsqueeze(1)
+
+                x_hat, loss_q, feature = self.generator(x, vocal=vocal_embedding)
+
+                # Discriminator training
                 self.optim_d.zero_grad()
                 discriminator_outputs = list(
                     map(
@@ -399,11 +568,10 @@ class SpeechTokenizerTrainer(nn.Module):
                 loss_disc_all = sum(
                     map(lambda x: discriminator_loss(*x[:2]), discriminator_outputs)
                 )
-
                 self.accelerator.backward(loss_disc_all)
                 self.optim_d.step()
 
-                # Generator
+                # Generator training
                 self.optim_g.zero_grad()
                 discriminator_outputs = list(
                     map(lambda disc: disc(x, x_hat), self.discriminators.values())
@@ -431,16 +599,12 @@ class SpeechTokenizerTrainer(nn.Module):
                     + self.distill_loss_lambda * loss_distill
                 )
                 self.accelerator.backward(loss_generator_all)
-                # if exists(self.max_grad_norm):
-                #     self.accelerator.clip_grad_norm_(self.model.parameters(), self.max_grad_norm)
                 self.optim_g.step()
 
+                # Log training metrics
                 step_time_log = accum_log(
                     step_time_log, {"time_cost": time.time() - tic}
                 )
-                # self.accelerator.wait_for_everyone()
-
-                # log
                 if self.is_main and not (steps % self.stdout_steps):
                     with torch.inference_mode():
                         mel_error = mel_loss(
@@ -468,11 +632,9 @@ class SpeechTokenizerTrainer(nn.Module):
 
                 self.accelerator.wait_for_everyone()
 
-                # validate and save model
+                # Validate and save model
                 if self.is_main and not (steps % self.save_model_steps) and steps != 0:
-
                     self.print("Validation start ...")
-                    # validate
                     total_mel_error = 0.0
                     total_distill_loss = 0.0
                     num = 0
@@ -480,8 +642,21 @@ class SpeechTokenizerTrainer(nn.Module):
                     with torch.inference_mode():
                         for i, batch in tqdm(enumerate(self.valid_dl)):
                             x, semantic_feature = batch
+                            vocal_embedding = None
+                            if self.embedder:
+                                vocal_feature = torch.from_numpy(
+                                    np.array(
+                                        [(extract_features(audio.cpu())) for audio in x]
+                                    )
+                                ).cuda()
+                                vocal_embedding = self.embedder.forward_feature(
+                                    vocal_feature.unsqueeze(1)
+                                )
+
                             x = x.unsqueeze(1)
-                            x_hat, loss_q, feature = self.generator(x)
+                            x_hat, loss_q, feature = self.generator(
+                                x, vocal=vocal_embedding
+                            )
                             mel_error = mel_loss(
                                 x, x_hat, **self.mel_loss_kwargs_list[0]
                             ).item()
@@ -543,7 +718,7 @@ class SpeechTokenizerTrainer(nn.Module):
                             step=steps,
                         )
 
-                    # save model
+                    # Save model checkpoint
                     model_path = str(
                         self.results_folder / f"SpeechTokenizerTrainer_{steps:08d}"
                     )
@@ -551,7 +726,7 @@ class SpeechTokenizerTrainer(nn.Module):
                     self.print(f"{steps}: saving model to {str(self.results_folder)}")
                     self.generator.train()
 
-                # Update lr
+                # Update learning rate
                 self.steps += 1
                 steps = int(self.steps.item())
                 if steps < self.num_warmup_steps:
@@ -568,5 +743,10 @@ class SpeechTokenizerTrainer(nn.Module):
         self.print("training complete")
 
     def continue_train(self):
+        """
+        Continue training from the last checkpoint.
+
+        This method loads the most recent checkpoint and resumes training from that point.
+        """
         self.load()
         self.train()

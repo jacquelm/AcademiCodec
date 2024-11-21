@@ -10,20 +10,43 @@ from . import SConv1d, SConvTranspose1d, SLSTM, STransformer
 
 @torch.jit.script
 def snake(x, alpha):
-    shape = x.shape
-    x = x.reshape(shape[0], shape[1], -1)
-    x = x + (alpha + 1e-9).reciprocal() * torch.sin(alpha * x).pow(2)
-    x = x.reshape(shape)
+    """
+    Apply a 'snake' transformation to input tensor x using parameter alpha.
+
+    Args:
+        x (torch.Tensor): Input tensor.
+        alpha (torch.Tensor): Transformation parameter.
+
+    Returns:
+        torch.Tensor: Transformed tensor.
+    """
+    shape = x.shape  # Store the original shape of x
+    x = x.reshape(shape[0], shape[1], -1)  # Reshape x to (batch_size, channels, -1)
+    x = x + (alpha + 1e-9).reciprocal() * torch.sin(alpha * x).pow(
+        2
+    )  # Apply snake transformation
+    x = x.reshape(shape)  # Reshape x back to its original shape
     return x
 
 
 class Snake1d(nn.Module):
+    """
+    1D Snake activation layer. Uses the 'snake' function with a learnable alpha parameter.
+
+    Args:
+        channels (int): Number of input channels.
+    """
+
     def __init__(self, channels):
         super().__init__()
-        self.alpha = nn.Parameter(torch.ones(1, channels, 1))
+        self.alpha = nn.Parameter(
+            torch.ones(1, channels, 1)
+        )  # Learnable parameter for snake transformation
 
     def forward(self, x):
-        return snake(x, self.alpha)
+        return snake(
+            x, self.alpha
+        )  # Apply snake transformation using the learnable alpha
 
 
 class SEANetResnetBlock(nn.Module):
