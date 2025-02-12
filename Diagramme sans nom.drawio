@@ -88,7 +88,7 @@
         <mxCell id="bgKSwqeapIQsin0Cjabu-5" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;curved=0;dashed=1;" parent="1" source="ek2Kx4IxuASS3qcadk8D-16" target="bgKSwqeapIQsin0Cjabu-4" edge="1">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="ek2Kx4IxuASS3qcadk8D-16" value="&lt;h1&gt;&lt;font style=&quot;font-size: 30px;&quot;&gt;&lt;font&gt;Lombard Embedder&lt;/font&gt;&lt;font&gt;&lt;br&gt;&lt;/font&gt;&lt;/font&gt;&lt;/h1&gt;" style="shape=trapezoid;perimeter=trapezoidPerimeter;whiteSpace=wrap;html=1;fixedSize=1;rotation=90;fillColor=#fff2cc;strokeColor=#d6b656;" parent="1" vertex="1">
+        <mxCell id="ek2Kx4IxuASS3qcadk8D-16" value="&lt;h1&gt;&lt;font style=&quot;font-size: 30px;&quot;&gt;&lt;font&gt;Lombard Encoder&lt;/font&gt;&lt;font&gt;&lt;br&gt;&lt;/font&gt;&lt;/font&gt;&lt;/h1&gt;" style="shape=trapezoid;perimeter=trapezoidPerimeter;whiteSpace=wrap;html=1;fixedSize=1;rotation=90;fillColor=#fff2cc;strokeColor=#d6b656;" parent="1" vertex="1">
           <mxGeometry x="368" y="518" width="170" height="68" as="geometry" />
         </mxCell>
         <mxCell id="ek2Kx4IxuASS3qcadk8D-27" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" parent="1" target="ek2Kx4IxuASS3qcadk8D-6" edge="1">
