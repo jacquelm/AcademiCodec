@@ -265,7 +265,7 @@
             <mxPoint x="610" y="380" as="targetPoint" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="D_jNxNw8p5H87cnRDdDA-9" value="Entrée pour ASR / TTS" style="rounded=0;whiteSpace=wrap;html=1;fontSize=17;" parent="1" vertex="1">
+        <mxCell id="D_jNxNw8p5H87cnRDdDA-9" value="&lt;div&gt;Entrée pour&amp;nbsp;&lt;/div&gt;&lt;div&gt;ASR / TTS&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;fontSize=17;" parent="1" vertex="1">
           <mxGeometry x="880" y="180" width="150" height="100" as="geometry" />
         </mxCell>
         <mxCell id="D_jNxNw8p5H87cnRDdDA-10" value="LPC / IAIF" style="rounded=0;whiteSpace=wrap;html=1;fontSize=17;" parent="1" vertex="1">
@@ -277,7 +277,7 @@
         <mxCell id="D_jNxNw8p5H87cnRDdDA-12" value="f&lt;sub&gt;0 &lt;/sub&gt;/ HNR / Jitter" style="rounded=0;whiteSpace=wrap;html=1;fontSize=17;" parent="1" vertex="1">
           <mxGeometry x="670" y="356.53" width="150" height="100" as="geometry" />
         </mxCell>
-        <mxCell id="D_jNxNw8p5H87cnRDdDA-13" value="Contrôle expressif / Codage" style="rounded=0;whiteSpace=wrap;html=1;fontSize=17;" parent="1" vertex="1">
+        <mxCell id="D_jNxNw8p5H87cnRDdDA-13" value="&lt;div&gt;Contrôle&amp;nbsp;&lt;/div&gt;&lt;div&gt;expressif / Codage&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;fontSize=17;" parent="1" vertex="1">
           <mxGeometry x="880" y="356.53" width="150" height="100" as="geometry" />
         </mxCell>
         <mxCell id="D_jNxNw8p5H87cnRDdDA-14" value="" style="edgeStyle=elbowEdgeStyle;elbow=horizontal;endArrow=classic;html=1;curved=0;rounded=0;endSize=8;startSize=8;exitX=1;exitY=1;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;strokeWidth=3;" parent="1" source="xLJscY4GR6NlE3Lm4fiY-4" target="D_jNxNw8p5H87cnRDdDA-10" edge="1">
