@@ -178,7 +178,7 @@ class KmeansTrainer:
     def load_feature(self):
         features = torch.zeros((0))
         with torch.inference_mode():
-            for i, batch in tqdm(enumerate(self.train_dl)):
+            for i, batch in enumerate(tqdm(self.train_dl)):
                 _, x, _ = batch
                 x = x.unsqueeze(1)
                 feature = self.model.forward_lstm(x)

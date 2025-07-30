@@ -20,14 +20,12 @@ if __name__ == "__main__":
     exts = cfg.get("exts").split(",")
     sample_rate = cfg.get("sample_rate")
     feature_extractor = Wav2Vec2FeatureExtractor.from_pretrained(
-        cfg.get("semantic_model_path")
+        cfg.get("pre_semantic_model_path")
     )
     model = (
         HubertModel.from_pretrained(cfg.get("semantic_model_path")).eval().to(device)
     )
-    print(
-        f"Succesfully load model from path {cfg.get("semantic_model_path")} ."
-    )
+    print(f"Succesfully load model from path {cfg.get('semantic_model_path')} .")
     target_layer = cfg.get("semantic_model_layer")
     path = Path(cfg.get("audio_dir"))
     file_list = [str(file) for ext in exts for file in path.glob(f"**/*.{ext}")]
@@ -44,7 +42,7 @@ if __name__ == "__main__":
         f"A total of {len(file_list)} samples will be processed, and {valid_set_size} of them will be included in the validation set."
     )
     with torch.no_grad():
-        for i, audio_file in tqdm(enumerate(file_list)):
+        for i, audio_file in enumerate(tqdm(file_list)):
             wav, sr = torchaudio.load(audio_file)
             if sr != sample_rate:
                 wav = torchaudio.functional.resample(wav, sr, sample_rate)
@@ -61,7 +59,9 @@ if __name__ == "__main__":
             else:
                 rep = ouput.hidden_states[target_layer].squeeze()
             rep_file = (
-                audio_file.replace(cfg.get("audio_dir"), cfg.get("rep_dir")).split(".")[0]
+                audio_file.replace(cfg.get("audio_dir"), cfg.get("rep_dir")).split(".")[
+                    0
+                ]
                 + ".hubert.npy"
             )
             rep_sub_dir = "/".join(rep_file.split("/")[:-1])

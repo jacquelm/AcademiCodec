@@ -5,6 +5,7 @@ import numpy as np
 
 from academicodec.modules import SEANetEncoder, SEANetDecoder
 from academicodec.quantization import ResidualVectorQuantizer
+from academicodec.quantization.core_vq import StaticResidualVectorQuantizer
 
 
 class SpeechTokenizer(nn.Module):
@@ -54,19 +55,20 @@ class SpeechTokenizer(nn.Module):
         )  # Calculate downsampling rate from stride ratios
 
         # Linear transformation to adjust the dimension of intermediate features if needed
-        if config.get("dimension") != config.get("semantic_dimension"):
+        if config.get("dimension") != config.get("semantic_dimension") + config.get(
+            "vocal_dimension", 0
+        ):
             self.transform = nn.Linear(
-                config.get("dimension") + config.get("vocal_dimension", 0),
-                config.get("semantic_dimension"),
+                config.get("dimension"),
+                config.get("semantic_dimension") + config.get("vocal_dimension", 0),
             )
         else:
             self.transform = nn.Identity()  # No transformation if dimensions match
 
         # Initialize the residual vector quantizer
         self.quantizer = ResidualVectorQuantizer(
-            dimension=config.get("dimension")
-            + config.get(
-                "vocal_dimension", 0
+            dimension=config.get(
+                "dimension"
             ),  # Dimension of the input to the quantizer
             n_q=config.get("n_q"),  # Number of quantization levels
             bins=config.get("codebook_size"),  # Size of the codebook
@@ -75,9 +77,8 @@ class SpeechTokenizer(nn.Module):
         # Initialize the decoder part of the model with parameters from the config.
         self.decoder = SEANetDecoder(
             n_filters=config.get("n_filters"),  # Number of filters for the decoder
-            dimension=config.get("dimension")
-            + config.get(
-                "vocal_dimension", 0
+            dimension=config.get(
+                "dimension"
             ),  # Dimension of the intermediate representation
             ratios=config.get("strides"),  # Stride ratios for upsampling
             lstm=config.get("lstm_layers"),  # Number of LSTM layers (if any)
@@ -139,7 +140,6 @@ class SpeechTokenizer(nn.Module):
         x: torch.tensor,
         n_q: int = None,
         layers: list = [0],
-        vocal: torch.tensor = None,
     ):
         """
         Forward pass of the model.
@@ -168,11 +168,6 @@ class SpeechTokenizer(nn.Module):
         # Encode input through the encoder
         e = self.encoder(x)
 
-        # Concatenate the encoder output with the vocal effort vector
-        # Shape of concatenated vector: [batch, latent_dim + vocal_dim, timesteps]
-        if vocal is not None:
-            e = torch.cat((e, repeat(vocal, "m n -> m n k", k=e.shape[-1])), dim=1)
-
         # Quantize the encoded features
         quantized, codes, commit_loss, quantized_list, _ = self.quantizer(
             e, n_q=n_q, layers=layers
@@ -191,7 +186,6 @@ class SpeechTokenizer(nn.Module):
         self,
         x: torch.tensor,
         layers: list = None,
-        vocal: torch.tensor = None,
     ):
         """
         Forward pass to get features from specific RVQ layers.
@@ -211,11 +205,6 @@ class SpeechTokenizer(nn.Module):
         # Encode input through the encoder
         e = self.encoder(x)
 
-        # Concatenate the encoder output with the vocal effort vector
-        # Shape of concatenated vector: [batch, latent_dim + vocal_dim, timesteps]
-        if vocal is not None:
-            e = torch.cat((e, repeat(vocal, "m n -> m n k", k=e.shape[-1])), dim=1)
-
         # Use provided layers or default to all layers
         layers = layers if layers else list(range(self.n_q))
 
@@ -229,7 +218,6 @@ class SpeechTokenizer(nn.Module):
         x: torch.tensor,
         n_q: int = None,
         st: int = None,
-        vocal: torch.tensor = None,
     ):
         """
         Encode input audio into quantization codes.
@@ -250,11 +238,6 @@ class SpeechTokenizer(nn.Module):
         """
         # Encode input through the encoder
         e = self.encoder(x)
-
-        # Concatenate the encoder output with the vocal effort vector
-        # Shape of concatenated vector: [batch, latent_dim + vocal_dim, timesteps]
-        if vocal is not None:
-            e = torch.cat((e, repeat(vocal, "m n -> m n k", k=e.shape[-1])), dim=1)
 
         # Use provided start index or default to 0
         st = st if st is not None else 0
@@ -287,3 +270,40 @@ class SpeechTokenizer(nn.Module):
         o = self.decoder(quantized)
 
         return o
+
+
+class ExportableSpeechTokenizer(nn.Module):
+    """
+    Inference-only version of SpeechTokenizer using StaticResidualVectorQuantizer.
+    """
+
+    def __init__(self, pretrained_model: SpeechTokenizer):
+        super().__init__()
+
+        # Reuse encoder, decoder, transform directly
+        self.encoder = pretrained_model.encoder
+        self.decoder = pretrained_model.decoder
+        self.transform = pretrained_model.transform
+
+        # Extract frozen codebooks from each quantizer stage
+        codebooks = [
+            layer._codebook.embed.detach().clone()
+            for layer in pretrained_model.quantizer.vq.layers
+        ]
+        self.quantizer = StaticResidualVectorQuantizer(codebooks)
+
+    def forward(self, x: torch.Tensor):
+        e = self.encoder(x)  # (B, D, T)
+        q = self.quantizer(e)  # (B, D, T)
+        f = self.transform(q.transpose(1, 2)).transpose(1, 2)  # (B, D', T)
+        o = self.decoder(q)  # (B, C, T)
+        return o, f
+
+
+def load_exportable_model(
+    config_path: str, ckpt_path: str, map_location="cpu"
+) -> nn.Module:
+    base_model = SpeechTokenizer.load_from_checkpoint(
+        config_path, ckpt_path, map_location
+    )
+    return ExportableSpeechTokenizer(base_model).eval()

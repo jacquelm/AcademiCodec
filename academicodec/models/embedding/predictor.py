@@ -142,3 +142,8 @@ class SPLPredictorCNN(nn.Module):
         # out = self.output_function(self.fc3(x))
 
         return out
+
+    def extract_feature(self, x):
+        x = self.forward_lstm(x)
+        feature = self.activation_function(self.fc1(x))
+        return feature

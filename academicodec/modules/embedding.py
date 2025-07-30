@@ -3,11 +3,6 @@ import numpy as np
 import torch
 
 
-# Ensure reproducibility
-torch.manual_seed(0)
-np.random.seed(0)
-
-
 def audio_class(audio, file, sr, type):
     audio_type = file.rsplit(".")[0].rsplit("_")[-1].rsplit(" ")[0]
     audio_index = type.index(audio_type)

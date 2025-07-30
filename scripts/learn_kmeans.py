@@ -12,6 +12,8 @@ if os.path.exists("/home/maxime/Documents/Code/Neural_Network/Pytorch/AcademiCod
     sys.path.insert(
         0, "/home/maxime/Documents/Code/Neural_Network/Pytorch/AcademiCodec"
     )
+elif os.path.exists("/lustre/fswork/projects/rech/ztm/ulg45lz/AcademiCodec"):
+    sys.path.insert(0, "/lustre/fswork/projects/rech/ztm/ulg45lz/AcademiCodec")
 else:
     sys.path.insert(0, "/home/mjacquelin/Project/Neural_Network/Pytorch/AcademiCodec")
 

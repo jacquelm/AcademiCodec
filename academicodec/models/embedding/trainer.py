@@ -172,6 +172,7 @@ class EmbeddingTrainer(nn.Module):
         # Setup Accelerator for distributed training
         dataloader_config = DataLoaderConfiguration(split_batches=split_batches)
         self.accelerator = Accelerator(
+            mixed_precision="fp16",
             dataloader_config=dataloader_config,
             kwargs_handlers=[DistributedDataParallelKwargs()],
             **accelerate_kwargs,
@@ -556,7 +557,7 @@ class EmbeddingTrainer(nn.Module):
                     num = 0
                     self.model.eval()
                     with torch.inference_mode():
-                        for i, batch in tqdm(enumerate(self.valid_dl)):
+                        for i, batch in enumerate(tqdm(self.valid_dl)):
                             _, x, y = batch
                             x = x.unsqueeze(1)
                             y_hat = self.model(x)

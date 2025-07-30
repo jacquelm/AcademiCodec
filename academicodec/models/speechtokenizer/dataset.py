@@ -6,6 +6,12 @@ import torch
 import torchaudio
 from torch.utils.data import Dataset, DataLoader
 from torch.nn.utils.rnn import pad_sequence
+from academicodec.modules.torch_embedding import (
+    extract_spectrogram,
+    extract_melspectrogram,
+    extract_mfcc,
+    extract_features,
+)
 
 
 class SpeechTokenizerDataset(Dataset):
@@ -16,7 +22,6 @@ class SpeechTokenizerDataset(Dataset):
         self.audio_dir = audio_dir
         self.filenames = []
         self.filenames.extend(glob.glob(audio_dir + "/*.wav"))
-        print(len(self.filenames))
         self.sr = args.sr
         self.max_len = args.audio_duration * args.sr
         self.do_distillation = args.do_distillation
@@ -67,7 +72,18 @@ class audioDataset(Dataset):
     """
 
     def __init__(
-        self, file_list, segment_size, sample_rate, downsample_rate=320, valid=False
+        self,
+        file_list,
+        segment_size,
+        sample_rate,
+        downsample_rate=320,
+        n_mfcc=12,
+        n_mel=80,
+        n_fft=1024,
+        hop_size=240,
+        win_size=1024,
+        valid=False,
+        feature=None,
     ):
         super().__init__()
         self.file_list = (
@@ -79,6 +95,47 @@ class audioDataset(Dataset):
         self.sample_rate = sample_rate  # Desired sample rate for audio
         self.valid = valid  # Flag indicating whether the dataset is for validation
         self.downsample_rate = downsample_rate  # Rate for downsampling features
+
+        self.n_mfcc = n_mfcc
+        self.n_mel = n_mel
+        self.n_fft = n_fft
+        self.hop_size = hop_size
+        self.win_size = win_size
+        self.extract_features = None
+        if feature == "spectrogram":
+            self.extract_features = lambda a: extract_spectrogram(
+                a,
+                self.sample_rate,
+                self.n_fft,
+                self.hop_size,
+                self.win_size,
+            )
+        elif feature == "mel":
+            self.extract_features = lambda a: extract_melspectrogram(
+                a,
+                self.sample_rate,
+                self.n_fft,
+                self.hop_size,
+                self.win_size,
+            )
+        elif feature == "mfcc":
+            self.extract_features = lambda a: extract_mfcc(
+                a,
+                self.sample_rate,
+                self.n_fft,
+                self.hop_size,
+                self.win_size,
+                self.n_mfcc,
+            )
+        elif feature == "all":
+            self.extract_features = lambda a: extract_features(
+                a,
+                self.sample_rate,
+                self.n_fft,
+                self.hop_size,
+                self.win_size,
+                self.n_mfcc,
+            )
 
     def __len__(self):
         """
@@ -121,12 +178,16 @@ class audioDataset(Dataset):
             audio = torchaudio.functional.resample(audio, sr, self.sample_rate)
 
         # Handle cases where audio length exceeds segment size
+        vocal_feature = None
         if audio.size(-1) > self.segment_size:
             if self.valid:
+                if self.extract_features is not None:
+                    vocal_feature = self.extract_features(audio[: self.segment_size])
                 # For validation, just take the first segment
                 return (
                     audio[: self.segment_size],
                     feature[: self.segment_size // self.downsample_rate],
+                    vocal_feature,
                 )
             # For training, randomly select a segment
             max_audio_start = audio.size(-1) - self.segment_size
@@ -144,13 +205,14 @@ class audioDataset(Dataset):
                 :,
             ]
         else:
-            if not self.valid:
-                # For training, pad the audio if it's shorter than the segment size
-                audio = torch.nn.functional.pad(
-                    audio, (0, self.segment_size - audio.size(-1)), "constant"
-                )
+            # For training, pad the audio if it's shorter than the segment size
+            audio = torch.nn.functional.pad(
+                audio, (0, self.segment_size - audio.size(-1)), "constant"
+            )
+        if self.extract_features is not None:
+            vocal_feature = self.extract_features(audio)
 
-        return audio, feature
+        return audio, feature, vocal_feature
 
 
 def get_dataloader(ds, **kwargs):

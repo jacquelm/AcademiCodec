@@ -40,7 +40,7 @@ if __name__ == "__main__":
     )
     file_list = sorted(file_list)
     with torch.no_grad():
-        for i, audio_file in tqdm(enumerate(file_list)):
+        for i, audio_file in enumerate(tqdm(file_list)):
 
             rep_file = (
                 audio_file.replace(args.inputdir, args.outputdir).split(".")[0] + ".npy"

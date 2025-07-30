@@ -3,6 +3,7 @@ generation/
 __pycache__
 checkpoints/
 logs/
+log/
 data/
 notebooks/
 Log/

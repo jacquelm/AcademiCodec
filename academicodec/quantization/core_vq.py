@@ -531,3 +531,120 @@ class ResidualVectorQuantization(nn.Module):
 
         # Return the accumulated quantized output
         return quantized_out
+
+
+# ----------------------------------------------------------
+# Inference-only ONNX-compatible quantizers (static, frozen)
+# ----------------------------------------------------------
+
+
+class StaticVectorQuantizer(nn.Module):
+    """
+    A simplified, inference-only vector quantizer for ONNX export.
+
+    Unlike the training version, this module:
+    - Uses a fixed codebook (no EMA updates, no reinitialization)
+    - Computes nearest codebook vector using Euclidean distance
+    - Uses one-hot selection + matmul to get quantized vectors
+    - Is fully compatible with ONNX for export and C inference
+
+    Input:  x of shape (B, D, T)
+    Output: quantized x of same shape
+    """
+
+    def __init__(self, codebook: torch.Tensor):
+        """
+        Parameters
+        ----------
+        codebook : torch.Tensor
+            A (num_codes, dim) tensor containing the frozen codebook vectors.
+        """
+        super().__init__()
+        # Register the codebook as a non-trainable buffer (exportable with ONNX)
+        self.register_buffer("codebook", codebook)
+
+    def forward(self, x):
+        """
+        Parameters
+        ----------
+        x : torch.Tensor
+            Input tensor of shape (B, D, T), where:
+            B = batch size
+            D = feature dimension
+            T = time steps
+
+        Returns
+        -------
+        quantized : torch.Tensor
+            Tensor of the same shape as input, quantized using nearest neighbor in the codebook.
+        """
+        # Convert (B, D, T) → (B, T, D) for easier broadcasting
+        x = x.permute(0, 2, 1)  # shape: (B, T, D)
+
+        # Compute squared Euclidean distance to each code vector
+        # dist = ||x - c||^2 = ||x||^2 - 2 * x·c + ||c||^2
+
+        # (B, T, 1)
+        x_sq = (x**2).sum(dim=2, keepdim=True)
+        # (C,) → (1, 1, C)
+        cb_sq = (self.codebook**2).sum(dim=1).unsqueeze(0).unsqueeze(0)
+        # (B, T, C)
+        dot = torch.matmul(x, self.codebook.t())
+        dist = x_sq - 2 * dot + cb_sq
+
+        # (B, T)
+        indices = torch.argmin(dist, dim=2)
+
+        # One-hot encode the selected code indices: (B, T, C)
+        one_hot = F.one_hot(indices, num_classes=self.codebook.size(0)).float()
+
+        # Multiply one-hot by codebook to get quantized values: (B, T, D)
+        quantized = torch.matmul(one_hot, self.codebook)
+
+        # Back to (B, D, T)
+        return quantized.permute(0, 2, 1)
+
+
+class StaticResidualVectorQuantizer(nn.Module):
+    """
+    Residual Vector Quantizer for inference-only use.
+
+    Implements the same quantization logic as training RVQ,
+    but:
+    - Uses frozen codebooks (no training logic)
+    - Compatible with ONNX export
+    - Can be stacked to simulate multi-stage residual quantization
+    """
+
+    def __init__(self, codebooks: list[torch.Tensor]):
+        """
+        Parameters
+        ----------
+        codebooks : list of torch.Tensor
+            Each tensor has shape (num_codes, dim), one per quantizer stage.
+        """
+        super().__init__()
+
+        self.quantizers = nn.ModuleList([StaticVectorQuantizer(cb) for cb in codebooks])
+
+    def forward(self, x):
+        """
+        Parameters
+        ----------
+        x : torch.Tensor
+            Input tensor of shape (B, D, T)
+
+        Returns
+        -------
+        quantized : torch.Tensor
+            Output tensor of shape (B, D, T), after all quantizer stages.
+        """
+        residual = x
+        quantized_sum = torch.zeros_like(x)
+
+        for quantizer in self.quantizers:
+            q = quantizer(residual)
+            residual = residual - q
+            quantized_sum = quantized_sum + q
+
+        return quantized_sum

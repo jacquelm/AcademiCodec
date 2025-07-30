@@ -16,7 +16,7 @@ from .loss import *
 import json
 from academicodec.models.speechtokenizer.model import SpeechTokenizer
 from academicodec.models.embedding import CNN_LSTM, SPLPredictorCNN
-from academicodec.modules.embedding import extract_features
+
 import time
 from tqdm import tqdm
 from accelerate import (
@@ -106,7 +106,7 @@ class SpeechTokenizerTrainer(nn.Module):
         discriminators: dict,
         cfg,
         accelerate_kwargs: dict = dict(),
-        embedder: CNN_LSTM = None,
+        embedder=None,
     ):
         """
         Initialize the SpeechTokenizerTrainer.
@@ -139,6 +139,13 @@ class SpeechTokenizerTrainer(nn.Module):
         self.num_warmup_steps = cfg.get("num_warmup_steps")
         self.batch_size = cfg.get("batch_size")
         self.sample_rate = cfg.get("sample_rate")
+        self.n_mfcc = cfg.get("n_mfcc")
+        self.n_mel = cfg.get("n_mel")
+        self.n_fft = cfg.get("n_fft")
+        self.hop_size = cfg.get("hop_size")
+        self.win_size = cfg.get("win_size")
+        self.feature = cfg.get("feature")
+
         self.showpiece_num = cfg.get("showpiece_num", 8)
         project_name = "SpeechTokenizer"
 
@@ -153,6 +160,7 @@ class SpeechTokenizerTrainer(nn.Module):
         # Setup Accelerator for distributed training
         dataloader_config = DataLoaderConfiguration(split_batches=split_batches)
         self.accelerator = Accelerator(
+            mixed_precision="no",
             dataloader_config=dataloader_config,
             kwargs_handlers=[DistributedDataParallelKwargs()],
             **accelerate_kwargs,
@@ -231,12 +239,24 @@ class SpeechTokenizerTrainer(nn.Module):
             segment_size=segment_size,
             downsample_rate=generator.downsample_rate,
             sample_rate=self.sample_rate,
+            n_mfcc=self.n_mfcc,
+            n_mel=self.n_mel,
+            n_fft=self.n_fft,
+            hop_size=self.hop_size,
+            win_size=self.win_size,
+            feature=self.feature,
         )
         self.valid_ds = audioDataset(
             file_list=valid_file_list,
-            segment_size=self.sample_rate * 30,
+            segment_size=segment_size,
             downsample_rate=generator.downsample_rate,
             sample_rate=self.sample_rate,
+            n_mfcc=self.n_mfcc,
+            n_mel=self.n_mel,
+            n_fft=self.n_fft,
+            hop_size=self.hop_size,
+            win_size=self.win_size,
+            feature=self.feature,
             valid=True,
         )
         if self.is_main:
@@ -543,19 +563,21 @@ class SpeechTokenizerTrainer(nn.Module):
                 tic = time.time()
 
                 # Training step
-                x, semantic_feature = batch
-                vocal_embedding = None
-                if self.embedder:
-                    vocal_feature = torch.from_numpy(
-                        np.array([(extract_features(audio.cpu())) for audio in x])
-                    ).cuda()
-                    vocal_embedding = self.embedder.forward_feature(
+                x, semantic_feature, vocal_feature = batch
+                if vocal_feature is not None:
+                    vocal_embedding = self.embedder.extract_feature(
                         vocal_feature.unsqueeze(1)
+                    )
+                    vocal_embedding = vocal_embedding.unsqueeze(1).repeat(
+                        1, semantic_feature.shape[1], 1
+                    )
+                    semantic_feature = torch.cat(
+                        (semantic_feature, vocal_embedding), dim=-1
                     )
 
                 x = x.unsqueeze(1)
 
-                x_hat, loss_q, feature = self.generator(x, vocal=vocal_embedding)
+                x_hat, loss_q, feature = self.generator(x)
 
                 # Discriminator training
                 self.optim_d.zero_grad()
@@ -640,23 +662,21 @@ class SpeechTokenizerTrainer(nn.Module):
                     num = 0
                     self.generator.eval()
                     with torch.inference_mode():
-                        for i, batch in tqdm(enumerate(self.valid_dl)):
-                            x, semantic_feature = batch
-                            vocal_embedding = None
-                            if self.embedder:
-                                vocal_feature = torch.from_numpy(
-                                    np.array(
-                                        [(extract_features(audio.cpu())) for audio in x]
-                                    )
-                                ).cuda()
-                                vocal_embedding = self.embedder.forward_feature(
+                        for i, batch in enumerate(tqdm(self.valid_dl)):
+                            x, semantic_feature, vocal_feature = batch
+                            if vocal_feature is not None:
+                                vocal_embedding = self.embedder.extract_feature(
                                     vocal_feature.unsqueeze(1)
+                                )
+                                vocal_embedding = vocal_embedding.unsqueeze(1).repeat(
+                                    1, semantic_feature.shape[1], 1
+                                )
+                                semantic_feature = torch.cat(
+                                    (semantic_feature, vocal_embedding), dim=-1
                                 )
 
                             x = x.unsqueeze(1)
-                            x_hat, loss_q, feature = self.generator(
-                                x, vocal=vocal_embedding
-                            )
+                            x_hat, loss_q, feature = self.generator(x)
                             mel_error = mel_loss(
                                 x, x_hat, **self.mel_loss_kwargs_list[0]
                             ).item()
