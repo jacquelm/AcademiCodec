@@ -484,7 +484,7 @@
         <mxCell id="tzW__afY_xMNXlv5BG-j-3" value="" style="sketch=0;pointerEvents=1;shadow=0;dashed=0;html=1;strokeColor=none;fillColor=#434445;aspect=fixed;labelPosition=center;verticalLabelPosition=bottom;verticalAlign=top;align=center;outlineConnect=0;shape=mxgraph.vvd.storage;fillStyle=solid;" vertex="1" parent="1">
           <mxGeometry x="366.25" y="635" width="117.5" height="156.67" as="geometry" />
         </mxCell>
-        <mxCell id="tzW__afY_xMNXlv5BG-j-4" value="&lt;div&gt;&lt;font style=&quot;font-size: 20px;&quot;&gt;CrÃ©ation de Corpus&lt;/font&gt;&lt;br&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#cce5ff;strokeColor=#36393d;fontSize=18;" vertex="1" parent="1">
+        <mxCell id="tzW__afY_xMNXlv5BG-j-4" value="&lt;div&gt;&lt;font style=&quot;font-size: 20px;&quot;&gt;CrÃ©ation de Corpus&lt;/font&gt;&lt;/div&gt;&lt;div&gt;&lt;font style=&quot;font-size: 15px;&quot;&gt;í ½í³ Jacquelin et al (Zenodo, 2025)&lt;font&gt;&lt;font&gt;&lt;br&gt;&lt;/font&gt;&lt;/font&gt;&lt;/font&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#cce5ff;strokeColor=#36393d;fontSize=18;" vertex="1" parent="1">
           <mxGeometry x="300" y="860" width="250" height="110" as="geometry" />
         </mxCell>
         <mxCell id="tzW__afY_xMNXlv5BG-j-5" value="" style="shape=parallelogram;perimeter=parallelogramPerimeter;whiteSpace=wrap;html=1;fixedSize=1;rotation=-90;" vertex="1" parent="1">
@@ -499,8 +499,8 @@
         <mxCell id="tzW__afY_xMNXlv5BG-j-8" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=3;dashed=1;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" edge="1" parent="1" source="tzW__afY_xMNXlv5BG-j-9" target="tzW__afY_xMNXlv5BG-j-37">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="tzW__afY_xMNXlv5BG-j-9" value="&lt;div&gt;Codec neuronal&lt;br&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffcccc;strokeColor=#36393d;fontSize=20;" vertex="1" parent="1">
-          <mxGeometry x="968.25" y="860" width="250" height="110" as="geometry" />
+        <mxCell id="tzW__afY_xMNXlv5BG-j-9" value="&lt;div&gt;Codec neuronal&lt;/div&gt;&lt;div&gt;&lt;font style=&quot;font-size: 15px;&quot;&gt;í ½í³ Jacquelin et al (Interspeech, 2024)&lt;/font&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffcccc;strokeColor=#36393d;fontSize=20;" vertex="1" parent="1">
+          <mxGeometry x="968.25" y="860" width="251.75" height="110" as="geometry" />
         </mxCell>
         <mxCell id="tzW__afY_xMNXlv5BG-j-10" value="" style="group" vertex="1" connectable="0" parent="1">
           <mxGeometry x="536.25" y="565" width="80" height="276.5285516366652" as="geometry" />
@@ -544,15 +544,15 @@
             <mxPoint x="66.25" y="154" as="targetPoint" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="tzW__afY_xMNXlv5BG-j-22" value="&lt;font style=&quot;font-size: 20px;&quot;&gt;Inpainting auto-supervisÃ©&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#cdeb8b;strokeColor=#36393d;fontSize=18;" vertex="1" parent="1">
-          <mxGeometry x="853.25" y="420" width="250" height="110" as="geometry" />
+        <mxCell id="tzW__afY_xMNXlv5BG-j-22" value="&lt;div&gt;&lt;font style=&quot;font-size: 20px;&quot;&gt;Inpainting auto-supervisÃ©&lt;/font&gt;&lt;/div&gt;&lt;div&gt;&lt;font style=&quot;font-size: 15px;&quot;&gt;í ½í³ Assad, Jacquelin et al (CSL, &lt;font&gt;Review)&lt;/font&gt;&lt;/font&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#cdeb8b;strokeColor=#36393d;fontSize=18;" vertex="1" parent="1">
+          <mxGeometry x="853.25" y="420" width="276.75" height="110" as="geometry" />
         </mxCell>
         <mxCell id="tzW__afY_xMNXlv5BG-j-23" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=3;dashed=1;" edge="1" parent="1" source="tzW__afY_xMNXlv5BG-j-24">
           <mxGeometry relative="1" as="geometry">
             <mxPoint x="839.25" y="760" as="targetPoint" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="tzW__afY_xMNXlv5BG-j-24" value="&lt;div&gt;&lt;div&gt;Exploration de l&#39;espace latent&lt;br&gt;&lt;/div&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffcc99;strokeColor=#36393d;fontSize=19;" vertex="1" parent="1">
+        <mxCell id="tzW__afY_xMNXlv5BG-j-24" value="&lt;div&gt;&lt;div&gt;Exploration de l&#39;espace latent&lt;/div&gt;&lt;div&gt;&lt;div&gt;&lt;font style=&quot;font-size: 15px;&quot;&gt;í ½í³ Jacquelin et al (ICASSP, 2024)&lt;/font&gt;&lt;/div&gt;&lt;/div&gt;&lt;div&gt;&lt;font style=&quot;font-size: 15px;&quot;&gt;í ½í³ &lt;font&gt;Jacquelin et al (JEP-TALN, 2024)&lt;/font&gt;&lt;/font&gt;&lt;/div&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffcc99;strokeColor=#36393d;fontSize=19;" vertex="1" parent="1">
           <mxGeometry x="668.25" y="860" width="250" height="110" as="geometry" />
         </mxCell>
         <mxCell id="tzW__afY_xMNXlv5BG-j-25" value="" style="endArrow=classic;html=1;rounded=0;exitX=0.5;exitY=0;exitDx=0;exitDy=0;strokeWidth=3;dashed=1;" edge="1" parent="1" source="tzW__afY_xMNXlv5BG-j-4" target="tzW__afY_xMNXlv5BG-j-3">
